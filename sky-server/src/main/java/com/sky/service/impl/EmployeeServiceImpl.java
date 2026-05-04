@@ -136,5 +136,25 @@ public class EmployeeServiceImpl implements EmployeeService {
         return new PageResult(total,record);
     }
 
+    @Override
+    public void startOrStop(Integer status, Long id) {
+        //update employee set status = ? where id = ?
+
+        //下面这三行是传统派
+//        Employee employee = new Employee();
+//        employee.setStatus(status);
+//        employee.setUpdateTime(LocalDateTime.now());
+
+        //
+        Employee employee = Employee.builder()
+                .status(status)
+                .id(id)
+                .build();
+
+
+        employeeMapper.update(employee);
+
+    }
+
 
 }

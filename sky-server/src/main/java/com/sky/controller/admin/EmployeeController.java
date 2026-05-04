@@ -104,6 +104,23 @@ public class EmployeeController {
         return Result.success(pageResult);
     }
 
+    /**
+     * 启用/禁用员工
+     * @param status
+     * @param id
+     * @return
+     */
+    //@PathVariable 的作用是把请求 URL 中的路径占位符（模板变量）
+    // 绑定到控制器方法的参数上。
+    @PostMapping("/status/{status}")
+    @ApiOperation("启用或禁用员工")
+    public Result startOrStop(@PathVariable Integer status,Long id) {
+        log.info("启用或禁用员工：id={}, status={}", id, status);
+        employeeService.startOrStop(status,id);
+        return Result.success();
+    }
+
+
 
 
 }
