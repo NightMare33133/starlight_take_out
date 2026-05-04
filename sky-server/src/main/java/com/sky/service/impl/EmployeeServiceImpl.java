@@ -1,7 +1,10 @@
 package com.sky.service.impl;
 
 import com.sky.constant.MessageConstant;
+import com.sky.constant.PasswordConstant;
 import com.sky.constant.StatusConstant;
+import com.sky.context.BaseContext;
+import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
 import com.sky.entity.Employee;
 import com.sky.exception.AccountLockedException;
@@ -9,12 +12,17 @@ import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
 import com.sky.mapper.EmployeeMapper;
 import com.sky.service.EmployeeService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import java.time.LocalDateTime;
+
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
+
+
 
     @Autowired
     private EmployeeMapper employeeMapper;
@@ -61,5 +69,41 @@ public class EmployeeServiceImpl implements EmployeeService {
         //3、返回实体对象
         return employee;
     }
+
+    /**
+     * 新增员工
+     * @param employeeDTO
+     */
+    @Override
+    public void save(EmployeeDTO employeeDTO) {
+        Employee employee = new Employee();
+        //对象属性拷贝
+        //将employeeDTO中的属性值复制到employee对象中
+        BeanUtils.copyProperties(employeeDTO, employee);//(源对象，目标对象)属性名必须是一致的才行
+
+        //设置账号状态，默认为正常的
+        employee.setStatus(StatusConstant.ENABLE);//这个是定义的常量类
+
+        //设置密码，默认密码123456
+        //getBytes()作用是将字符串转换为字节数组，默认使用平台的默认字符集（通常是UTF-8）
+        //PasswordConstant.DEFAULT_PASSWORD是一个常量，表示默认密码123456
+        employee.setPassword(DigestUtils.md5DigestAsHex(PasswordConstant.DEFAULT_PASSWORD.getBytes()));
+
+        //设置当前记录的创建实际和修改时间
+        employee.setCreateTime(LocalDateTime.now());
+        employee.setUpdateTime(LocalDateTime.now());
+
+        //设置当前记录创建人id和修改人id
+//        employee.setCreateUser(10L);
+//        employee.setUpdateUser(10L);
+        employee.setCreateUser(BaseContext.getCurrentId());
+        employee.setUpdateUser(BaseContext.getCurrentId());
+
+        employeeMapper.insert(employee);
+
+
+    }
+
+
 
 }
