@@ -5,7 +5,7 @@ package com.sky.constant;
  */
 public class StatusConstant {
 
-    //启用
+    //启用 final代表
     public static final Integer ENABLE = 1;
 
     //禁用
