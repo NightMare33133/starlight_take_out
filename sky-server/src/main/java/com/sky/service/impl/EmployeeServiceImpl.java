@@ -1,16 +1,20 @@
 package com.sky.service.impl;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
 import com.sky.constant.PasswordConstant;
 import com.sky.constant.StatusConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.EmployeeDTO;
 import com.sky.dto.EmployeeLoginDTO;
+import com.sky.dto.EmployeePageQueryDTO;
 import com.sky.entity.Employee;
 import com.sky.exception.AccountLockedException;
 import com.sky.exception.AccountNotFoundException;
 import com.sky.exception.PasswordErrorException;
 import com.sky.mapper.EmployeeMapper;
+import com.sky.result.PageResult;
 import com.sky.service.EmployeeService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -104,6 +109,32 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     }
 
+    /**
+     * 分页查询
+     * @param employeePageQueryDTO
+     * @return
+     */
+    @Override
+    public PageResult pageQuery(EmployeePageQueryDTO employeePageQueryDTO) {
+        //select * from employee limit 0,10分页查询
+        //Mybatis有一个插件pagehelper，作用是
+        //开始分页查询
+        // 使用 PageHelper 开始分页：PageHelper 会把 page 和 pageSize 保存到 ThreadLocal 中，
+        //随后的 MyBatis 查询会被 PageHelper 的拦截器拦截，自动在生成的 SQL 上增加 LIMIT / OFFSET（即物理分页）。
+        // 注意：必须在执行 mapper 查询方法之前调用 startPage，且 startPage 与 mapper 查询要在同一线程中。
+        PageHelper.startPage(employeePageQueryDTO.getPage(),employeePageQueryDTO.getPageSize());
+
+        // 调用 mapper 的分页查询方法，触发实际的数据库查询。
+        // 由于上面已经调用了 PageHelper.startPage，这次查询会返回一个 Page 对象（实现了 List）
+        // Page 中除了当前页的数据集合外，还包含总记录数、页数、当前页码、每页大小等分页元信息，
+        // 可以通过 page.getTotal()、page.getResult()（或 page.getPageNum()/getPageSize()/getPages() 等）访问。
+        Page<Employee> page= employeeMapper.pageQuery(employeePageQueryDTO);
+
+        long total = page.getTotal();
+        List<Employee> record = page.getResult();
+
+        return new PageResult(total,record);
+    }
 
 
 }
