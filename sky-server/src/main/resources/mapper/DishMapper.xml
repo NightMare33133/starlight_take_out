@@ -11,6 +11,19 @@
                #{description}, #{status}, #{createTime},
                #{updateTime}, #{createUser}, #{updateUser})
     </insert>
+
+
+    <delete id="deleteByIds">
+        delete from dish where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+
+    </delete>
+
+
+
+
     <select id="pageQuery" resultType="com.sky.vo.DishVO">
         select d.*, c.name as category_name
         from dish d
