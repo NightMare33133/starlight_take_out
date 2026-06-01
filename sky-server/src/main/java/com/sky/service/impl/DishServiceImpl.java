@@ -8,6 +8,7 @@ import com.sky.dto.DishDTO;
 import com.sky.dto.DishPageQueryDTO;
 import com.sky.entity.Dish;
 import com.sky.entity.DishFlavor;
+import com.sky.entity.Setmeal;
 import com.sky.exception.DeletionNotAllowedException;
 import com.sky.mapper.DishFlavorMapper;
 import com.sky.mapper.DishMapper;
@@ -21,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -34,6 +36,8 @@ public class DishServiceImpl implements DishService {
     private DishFlavorMapper dishFlavorMapper;
     @Autowired
     private SetmealDishMapper setmealDishMapper;
+    @Autowired
+    private SetmealMapper setmealMapper;
 
     /**
      * 新增菜品和对应口味
@@ -173,4 +177,45 @@ public class DishServiceImpl implements DishService {
             dishFlavorMapper.insertBatch(flavors);
         }
     }
+
+    /**
+     * 根据ID 启用/禁用餐品状态
+     * @param id
+     * @param status
+     */
+    @Transactional
+    public void startOrStop(Long id, Integer status) {
+        //业务规则为：如果执行停售操作，则包含此菜品的套餐也需要停售。
+        //先更新当前菜品状态
+        Dish dish = new Dish();
+        dish.setId(id);
+        dish.setStatus(status);
+        dishMapper.update(dish);
+
+        if(status==StatusConstant.DISABLE){
+            //如果执行停售操作，则包含此菜品的套餐也需要停售。
+            // 1. 准备参数：将单个菜品id包装成集合
+            List<Long> dishIds = new ArrayList<>();
+            dishIds.add(id); // 这里的 id 就是你传进来的菜品id
+            // select setmeal_id from setmeal_dish where dish_id in (?,?,?)
+            List<Long> setmealIds = setmealDishMapper.getSetmealIdsByDishIds(dishIds);
+
+            // 3. 判断是否有套餐关联了这个菜品
+            if (setmealIds != null && setmealIds.size() > 0) {
+                // 4. 如果有，就通知 SetmealMapper 把这些套餐都停售
+                // 对应的SQL：update setmeal set status = 0 where id in (?,?,?)
+                // 创建一个“工具人”载体对象
+                Setmeal setmeal = new Setmeal();
+                setmeal.setStatus(StatusConstant.DISABLE);
+                // 调用底层的批量更新方法
+                // 切面拦截到后，会自动把当前时间和当前登录人ID塞进 setmeal 对象里
+                setmealMapper.updateStatusBySetmealIds(setmeal, setmealIds);
+            }
+        }
+
+    }
+
+
+
+
 }
