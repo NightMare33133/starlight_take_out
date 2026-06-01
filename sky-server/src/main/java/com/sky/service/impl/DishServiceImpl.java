@@ -121,4 +121,56 @@ public class DishServiceImpl implements DishService {
         dishFlavorMapper.deleteByDishIds(ids);
         
     }
+    /**
+     * 根据ID查询菜品和对应的口味数据
+     * @param id
+     * @return
+     */
+    public DishVO getByIdWithFlavor(Long id) {
+        //根据id查询菜品数据
+        Dish dish = dishMapper.getById(id);//之前实现了
+
+        //根据菜品id查询口味信息
+        List<DishFlavor> flavors = dishFlavorMapper.getByDishId(id);
+
+        //将查询到的数据封装到VO
+        DishVO dishVO = new DishVO();
+        BeanUtils.copyProperties(dish, dishVO);//把前者属性拷贝到后者
+        //额外设置一下口味数据
+        dishVO.setFlavors(flavors);
+
+        return dishVO;
+    }
+
+    /**
+     * 根据ID修改菜品基本信息和对应的口味信息
+     * @param dishDTO
+     */
+    @Transactional
+    public void updateWithFlavor(DishDTO dishDTO) {
+        //只是修改菜品口味信息的话一个SQL就好了，
+        //但是这里还需要修改对应口味信息，你可能遇到多种情况，可能不改动，可能删一点，可能全删除
+        //这个在业务层面里更好的解决方法其实是先删除再插入新数据
+        //这样实现的就是修改效果
+
+        //这里有快捷法new Dish().var再tab
+        //这里是新建一个dish对象
+        Dish dish = new Dish();
+        BeanUtils.copyProperties(dishDTO, dish);
+        //修改菜品基本信息
+        dishMapper.update(dish);
+        //删除原有的口味数据
+        dishFlavorMapper.deleteByDishId(dishDTO.getId());
+
+        //重新插入口味数据
+        List<DishFlavor> flavors = dishDTO.getFlavors();
+        //用户可能没有提交口味
+        if(flavors!=null&&flavors.size()>0){
+            flavors.forEach(dishFlavor->{
+                dishFlavor.setDishId(dishDTO.getId());
+            });
+            //向口味表添加n条口味
+            dishFlavorMapper.insertBatch(flavors);
+        }
+    }
 }
