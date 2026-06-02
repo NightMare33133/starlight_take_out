@@ -132,4 +132,38 @@ public class SetmealServiceImpl implements SetmealService {
         setmealVO.setSetmealDishes(setmealDishes);
         return setmealVO;
     }
+
+    /**
+     * 修改套餐
+     * @param setmealDTO
+     * @return
+     */
+    @Transactional
+    public void updateWithDish(SetmealDTO setmealDTO) {
+        //这个其实应该会比较类似新增来着？总之先把传入的内容覆盖到setmeal对象中
+        Setmeal setmeal = new Setmeal();
+        BeanUtils.copyProperties(setmealDTO, setmeal);
+        //更新套餐表中的基本信息
+        setmealMapper.update(setmeal);
+
+        //获取套餐的ID --这是为了处理setmeal_dish表中的相关联信息
+        Long setmealId = setmeal.getId();
+
+        //比较好的逻辑方式就是把原本的内容删掉，然后再把新得到的覆盖上去
+        setmealDishMapper.deleteBySetmealId(setmealId);
+
+        //这个就是DTO传入的新的内容
+        List<SetmealDish>  setmealDishes = setmealDTO.getSetmealDishes();
+        //先判断一下List是否为空？
+        if(setmealDishes!=null&&setmealDishes.size()>0){
+            //非空则挨个将当前的setmealId再次绑定一下（因为之前删除了，所以现在需要重新绑定）
+            setmealDishes.forEach(setmealDish -> {
+                setmealDish.setSetmealId(setmealId);
+            });
+            //执行具体SQL
+            setmealDishMapper.insertBatch(setmealDishes);
+        }
+
+
+    }
 }
