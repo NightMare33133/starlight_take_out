@@ -6,9 +6,12 @@ import com.sky.constant.MessageConstant;
 import com.sky.constant.StatusConstant;
 import com.sky.dto.SetmealDTO;
 import com.sky.dto.SetmealPageQueryDTO;
+import com.sky.entity.Dish;
 import com.sky.entity.Setmeal;
 import com.sky.entity.SetmealDish;
 import com.sky.exception.DeletionNotAllowedException;
+import com.sky.exception.SetmealEnableFailedException;
+import com.sky.mapper.DishMapper;
 import com.sky.mapper.SetmealDishMapper;
 import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
@@ -29,6 +32,8 @@ public class SetmealServiceImpl implements SetmealService {
     private SetmealMapper setmealMapper;
     @Autowired
     private SetmealDishMapper setmealDishMapper;
+    @Autowired
+    private DishMapper dishMapper;
     //业务规则：
     //- 套餐名称唯一
     //- 套餐必须属于某个分类
@@ -165,5 +170,39 @@ public class SetmealServiceImpl implements SetmealService {
         }
 
 
+    }
+
+    /**
+     * 启用/禁用套餐
+     * @param status
+     * @param id
+     * @return
+     */
+    public void startOrStop(Integer status, Long id) {
+        //业务规则：
+        //- 可以对状态为起售的套餐进行停售操作，可以对状态为停售的套餐进行起售操作
+        //- 起售的套餐可以展示在用户端，停售的套餐不能展示在用户端
+        //- 起售套餐时，如果套餐内包含停售的菜品，则不能起售
+        //总之我们现在拿到的是状态和这个套餐的ID，我们还没有这个套餐的相关信息，
+        //这里就是基于将要变更的状态来进行不同的处理
+        if (status == StatusConstant.ENABLE) {
+            //select a.* from dish a left join setmeal_dish b on a.id = b.dish_id where b.setmeal_id = ?
+            //- 因为起售套餐时，如果套餐内包含停售的菜品，则不能起售 所以我们需要看一下菜品中是否包含停售菜品
+            //这里是通过套餐的ID拿到相关的所有dish
+            List<Dish> dishes = dishMapper.getBySetmealId(id);
+            if (dishes != null && dishes.size() > 0) {
+                dishes.forEach(dish -> {
+                    if(StatusConstant.DISABLE == (dish.getStatus())){
+                        throw new SetmealEnableFailedException(MessageConstant.SETMEAL_ENABLE_FAILED);
+                    }
+                });
+            }
+        }
+        //- -总之就是起售的时候需要特殊处理一下，两种状态共性就是要改的内容是一致的
+        Setmeal setmeal = Setmeal.builder()
+                .id(id)
+                .status(status)
+                .build();
+        setmealMapper.update(setmeal);
     }
 }

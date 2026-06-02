@@ -112,4 +112,18 @@ public class SetmealController {
         return Result.success();
     }
 
+    /**
+     * 启用/禁用套餐
+     * @param status
+     * @param id
+     * @return
+     */
+    @PostMapping("/status/{status}")
+    @ApiOperation("启用禁用套餐")
+    public Result<String> startOrStop(@PathVariable("status") Integer status, Long id){
+        log.info("启用禁用套餐：id={}, status={}", id, status);
+        setmealService.startOrStop(status, id);
+        return Result.success();
+        }
+
 }
