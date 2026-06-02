@@ -14,6 +14,7 @@ import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
 import com.sky.service.SetmealService;
 import com.sky.vo.DishVO;
+import com.sky.vo.SetmealVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -112,5 +113,23 @@ public class SetmealServiceImpl implements SetmealService {
             setmealDishMapper.deleteBySetmealId(setmealId);
         }
 
+    }
+
+    /**
+     * 根据id查询套餐，用于修改页面回显数据
+     * @param id
+     * @return
+     */
+    public SetmealVO getByIdWithDish(Long id) {
+        //首先这里是传入了套餐ID，所以我们要基于ID拿到套餐的基本信息
+        Setmeal setmeal = setmealMapper.getById(id);
+        //接着还要获取到相应的套餐信息
+        List<SetmealDish> setmealDishes = setmealDishMapper.getBySetmealId(id);
+
+        //但是这些内容应该通过VO返回
+        SetmealVO setmealVO = new SetmealVO();
+        BeanUtils.copyProperties(setmeal, setmealVO);
+        setmealVO.setSetmealDishes(setmealDishes);
+        return setmealVO;
     }
 }
