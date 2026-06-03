@@ -14,6 +14,11 @@ spring:
       username: ${sky.datasource.username}
       password: ${sky.datasource.password}
 
+  redis:
+    host: ${sky.redis.host}
+    port: ${sky.redis.port}
+    #password: 123456 我没设置密码
+    database: ${sky.redis.database} #默认是0号数据库
 mybatis:
   #mapper配置文件
   mapper-locations: classpath:mapper/*.xml
