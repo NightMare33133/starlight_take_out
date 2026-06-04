@@ -44,9 +44,15 @@ sky:
     admin-ttl: 2592000000
     # 设置前端传递过来的令牌名称
     admin-token-name: token
+    user-secret-key: itheima
+    user-ttl: 2592000000
+    user-token-name: authentication
   alioss:
     # 在common properties文件中配置阿里云OSS相关的属性会直接读取该文件中的属性值
     endpoint: ${sky.alioss.endpoint}
     access-key-id: ${sky.alioss.access-key-id}
     access-key-secret: ${sky.alioss.access-key-secret}
     bucket-name: ${sky.alioss.bucket-name}
+  wechat:
+    app-id: ${sky.wechat.appid}
+    app-secret: ${sky.wechat.secret}

@@ -162,6 +162,7 @@ public class HttpClientUtil {
         } finally {
             try {
                 response.close();
+                //httpClient.close();//AI说这里是漏写了httpClient.close();不知道会有什么影响- -
             } catch (IOException e) {
                 e.printStackTrace();
             }
