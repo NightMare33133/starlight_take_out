@@ -6,15 +6,18 @@ import com.sky.dto.DishPageQueryDTO;
 import com.sky.entity.Dish;
 import com.sky.result.PageResult;
 import com.sky.result.Result;
+import com.sky.service.CategoryService;
 import com.sky.service.DishService;
 import com.sky.vo.DishVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/admin/dish")
@@ -24,6 +27,9 @@ public class DishController {
 
     @Autowired
     private DishService dishService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 新增菜品
@@ -35,6 +41,10 @@ public class DishController {
     public Result save(@RequestBody DishDTO dishDTO) {
         log.info("新增菜品：{}", dishDTO);
         dishService.saveWithFlavor(dishDTO);
+
+        //清理缓存数据
+        String key = "dish:" + dishDTO.getCategoryId();
+        cleanCache(key);//这里是精确清理
         return Result.success();
     }
 
@@ -64,6 +74,9 @@ public class DishController {
     public Result delete(@RequestParam List<Long> ids){
         log.info("批量删除菜品：ids={}", ids);
         dishService.deleteBatch(ids);
+
+        //将所有的菜品缓存数据清理掉，所有以dish_开头的key
+        cleanCache("dish_*");
         return Result.success();
     }
 
@@ -93,7 +106,13 @@ public class DishController {
     public Result update(@RequestBody DishDTO dishDTO){
         log.info("修改菜品：{}", dishDTO);
         dishService.updateWithFlavor(dishDTO);
+
+        //这里有可能会因为修改分类，影响别的缓存数据
+        //但是因为修改分类其实也不算常规操作，所以干脆直接全杀就好了
+        //将所有的菜品缓存数据清理掉，所有以dish_开头的key
+        cleanCache("dish_*");//这边是支持删除集合的
         return Result.success();
+
     }
 
     /**
@@ -107,6 +126,9 @@ public class DishController {
     public Result startOrStop(@PathVariable Integer status,@RequestParam Long id){
         log.info("修改菜品状态：id={}, status={}", id, status);
         dishService.startOrStop(id,status);
+
+        //依旧皆杀
+        cleanCache("dish_*");
         return Result.success();
     }
 
@@ -124,6 +146,15 @@ public class DishController {
 
     }
 
+    /**
+     * 清理缓存数据
+     * @param pattern
+     */
 
+    private void cleanCache(String pattern){
+        //将所有的菜品缓存数据清理掉
+        Set keys = redisTemplate.keys(pattern);
+        redisTemplate.delete(keys);//这边是支持删除集合的
+    }
 
 }
