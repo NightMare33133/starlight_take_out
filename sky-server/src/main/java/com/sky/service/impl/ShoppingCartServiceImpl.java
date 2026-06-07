@@ -22,6 +22,7 @@ import java.util.List;
 @Slf4j
 public class ShoppingCartServiceImpl implements ShoppingCartService {
 
+
     @Autowired
     private ShoppingCartMapper shoppingCartMapper;
 
@@ -82,4 +83,28 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
 
     }
+
+
+    /**
+     * 查看购物车
+     * @return
+     */
+    public List<ShoppingCart> showShoppingCartList() {
+        Long userId = BaseContext.getCurrentId();
+        ShoppingCart shoppingCart = ShoppingCart.builder()
+                .userId(userId)
+                .build();
+        List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
+        return list;
+    }
+
+    /**
+     * 情况购物车
+     */
+    public void cleanShoppingCart() {
+        Long userId = BaseContext.getCurrentId();
+        shoppingCartMapper.deleteByUserId(userId);
+    }
+
+
 }
