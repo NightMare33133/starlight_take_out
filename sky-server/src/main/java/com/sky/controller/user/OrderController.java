@@ -8,6 +8,7 @@ import com.sky.result.Result;
 import com.sky.service.OrderService;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderSubmitVO;
+import com.sky.vo.OrderVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -71,5 +72,35 @@ public class OrderController {
         PageResult pageResult = orderService.pageQueryOrder(page, pageSize,status);
         return Result.success(pageResult);
     }
+
+    /**
+     * 查询订单详情
+     * @param id
+     * @return
+     */
+    @GetMapping("/orderDetail/{id}")
+    @ApiOperation("查询订单详情")
+    public Result<OrderVO> orderDetail(@PathVariable Long id) {
+        log.info("查询订单详情，订单id：{}", id);
+        OrderVO orderVO = orderService.detail(id);
+        return Result.success(orderVO);
+    }
+
+    //业务规则：
+    //
+    //- 待支付和待接单状态下，用户可直接取消订单
+    //- 商家已接单状态下，用户取消订单需电话沟通商家
+    //- 派送中状态下，用户取消订单需电话沟通商家
+    //- 如果在待接单状态下取消订单，需要给用户退款
+    //- 取消订单后需要将订单状态修改为“已取消”
+
+    @PutMapping("/cancel/{id}")
+    @ApiOperation("取消订单")
+    public Result cancelOrder(@PathVariable Long id) throws Exception {
+        log.info("取消订单，订单id：{}", id);
+        orderService.userCancelById(id);
+        return Result.success();
+    }
+
 
 }

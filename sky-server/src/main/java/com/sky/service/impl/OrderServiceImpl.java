@@ -218,4 +218,73 @@ public class OrderServiceImpl implements OrderService {
         //但是这里需要返回的对象我们是重新装填的
         return new PageResult(pages.getTotal(), orderVOList);
     }
+
+    /**
+     * 查询订单详情
+     * @param id
+     * @return
+     */
+    public OrderVO detail(Long id) {
+        //根据ID查询具体订单
+        Orders orders = orderMapper.getById(id);
+        //根据订单id查询订单详情
+        List<OrderDetail> orderDetails = orderDetailMapper.getByOrderId(id);
+        //获取之后需要装入OrderVO对象中
+        OrderVO orderVO = new OrderVO();
+        BeanUtils.copyProperties(orders, orderVO);
+        //再把订单详情存入
+        orderVO.setOrderDetailList(orderDetails);
+
+        return orderVO;
+    }
+
+    /**
+     * 用户取消订单
+     * @param id
+     */
+    public void userCancelById(Long id) {
+        //业务规则：
+        //- 待支付和待接单状态下，用户可直接取消订单
+        //- 商家已接单状态下，用户取消订单需电话沟通商家
+        //- 派送中状态下，用户取消订单需电话沟通商家
+        //- 如果在待接单状态下取消订单，需要给用户退款
+        //- 取消订单后需要将订单状态修改为“已取消”
+
+        // 传入的信息只有id所以要基于id来操作
+        // 所以首先根据id查询订单
+        Orders ordersDB = orderMapper.getById(id);
+        // 判断订单是否存在
+        if(ordersDB == null){
+            //--这个是参考的
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        //判断订单状态 1待付款 2待接单 3已接单 4派送中 5已完成 6已取消
+        //待支付和待接单状态下，用户可直接取消订单
+        //这里是对于1待付款 2待接单状态的订单可以直接取消，所以如果订单状态大于2就说明不满足条件
+        if(ordersDB.getStatus() > 2){
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        Orders orders = new Orders();
+        orders.setId(ordersDB.getId());
+
+        //对于订单处于待接单状态的订单需要给用户退款，所以需要判断一下订单状态是否为2
+        if(ordersDB.getStatus().equals(Orders.TO_BE_CONFIRMED)){
+            //- -这里肯定是无法调用wx的退款功能
+//            //调用微信支付退款接口
+//            weChatPayUtil.refund(
+//                    ordersDB.getNumber(), //商户订单号
+//                    ordersDB.getNumber(), //商户退款单号
+//                    new BigDecimal(0.01),//退款金额，单位 元
+//                    new BigDecimal(0.01));//原订单金额
+            //支付状态修改为 退款
+            orders.setPayStatus(Orders.REFUND);
+        }
+        //更新订单状态、取消原因、取消时间
+        orders.setStatus(Orders.CANCELLED);
+        orders.setCancelReason("用户取消订单");
+        orders.setCancelTime(LocalDateTime.now());
+        orderMapper.update(orders);
+
+    }
 }
