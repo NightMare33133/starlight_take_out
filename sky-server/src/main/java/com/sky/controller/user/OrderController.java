@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
+@RestController("userOrderController")
 @RequestMapping("/user/order")
 @Api(tags = "用户端订单相关接口")
 @Slf4j
@@ -99,6 +99,16 @@ public class OrderController {
     public Result cancelOrder(@PathVariable Long id) throws Exception {
         log.info("取消订单，订单id：{}", id);
         orderService.userCancelById(id);
+        return Result.success();
+    }
+
+    //业务规则：
+    //- 再来一单就是将原订单中的商品重新加入到购物车中
+    @PostMapping("/repetition/{id}")
+    @ApiOperation("再来一单")
+    public Result repetition(@PathVariable Long id){
+        log.info("再来一单，订单id：{}", id);
+        orderService.repetition(id);
         return Result.success();
     }
 

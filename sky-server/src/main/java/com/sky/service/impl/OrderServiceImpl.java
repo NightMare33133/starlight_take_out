@@ -3,6 +3,7 @@ package com.sky.service.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
+import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
 import com.sky.constant.MessageConstant;
 import com.sky.context.BaseContext;
 import com.sky.dto.OrdersPageQueryDTO;
@@ -29,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -88,6 +90,9 @@ public class OrderServiceImpl implements OrderService {
         orders.setPhone(addressBook.getPhone());//地址簿里面会有
         orders.setConsignee(addressBook.getConsignee());
         orders.setUserId(userId);
+        //拼接一下地址
+        String address = addressBook.getProvinceName()+addressBook.getCityName()+addressBook.getDistrictName()+addressBook.getDetail();
+        orders.setAddress(address);
 
         orderMapper.insert(orders);
 
@@ -249,7 +254,6 @@ public class OrderServiceImpl implements OrderService {
         //- 派送中状态下，用户取消订单需电话沟通商家
         //- 如果在待接单状态下取消订单，需要给用户退款
         //- 取消订单后需要将订单状态修改为“已取消”
-
         // 传入的信息只有id所以要基于id来操作
         // 所以首先根据id查询订单
         Orders ordersDB = orderMapper.getById(id);
@@ -286,5 +290,107 @@ public class OrderServiceImpl implements OrderService {
         orders.setCancelTime(LocalDateTime.now());
         orderMapper.update(orders);
 
+    }
+
+    /**
+     * 基于订单id再来一单
+     * @param id
+     */
+    public void repetition(Long id) {
+        //因为传入的只是订单id，这肯定是不够的，你需要知道是那个用户先- -
+        Long userId = BaseContext.getCurrentId();
+
+        // 根据订单id查询当前的订单详情
+        List<OrderDetail> orderDetails = orderDetailMapper.getByOrderId(id);
+        //业务规则：
+        //- 再来一单就是将原订单中的商品重新加入到购物车中
+        // 所以这里提取了具体的商品信息，自然是需要商品详情信息对象转换为购物车对象的
+        List<ShoppingCart> shoppingCartList = new ArrayList<>();
+
+        for (OrderDetail x : orderDetails) {
+            // 1. 每遍历到一个订单商品，就创建一个新的购物车对象
+            ShoppingCart shoppingCart = new ShoppingCart();
+
+            // 2. 将原订单详情里面的菜品信息（比如菜名、价格、图片等）复制到购物车对象中
+            // 注意最后那个 "id"，意思是：不要复制 id 字段！因为购物车需要生成自己新的主键 id。
+            BeanUtils.copyProperties(x, shoppingCart, "id");
+
+            // 3. 补充一些订单明细里没有，但购物车里必须要有的字段
+            shoppingCart.setUserId(userId);
+            shoppingCart.setCreateTime(LocalDateTime.now());
+
+            // 4. 把做好的购物车对象塞进你准备好的 List 里面
+            shoppingCartList.add(shoppingCart);
+        }
+        //这样shoppingCartList的list就做好了，可以批量存入数据库了
+        shoppingCartMapper.insertBatch(shoppingCartList);
+
+    }
+
+    /**
+     * 条件搜索查询
+     * @param ordersPageQueryDTO
+     * @return
+     */
+    public PageResult conditionSearch(OrdersPageQueryDTO ordersPageQueryDTO) {
+        //传入的是OrdersPageQueryDTO对象所以具有page和pageSize这些分页信息
+        //同时也有一些具体订单条件如number,phone,status和userId等
+        //业务规则：
+        //- 输入订单号/手机号进行搜索，支持模糊搜索
+        //- 根据订单状态进行筛选
+        //- 下单时间进行时间筛选
+        //- 搜索内容为空，提示未找到相关订单
+        //- 搜索结果页，展示包含搜索关键词的内容
+        //- 分页展示搜索到的订单数据
+        //总之PageHelper肯定得先的调用
+        PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
+        //这里的pageQuery方法是我们自己写的，所以需要传入OrdersPageQueryDTO对象，里面就包含了我们需要的搜索条件
+        Page<Orders> pages = orderMapper.pageQuery(ordersPageQueryDTO);
+        //原本只做到上一条代码，调试前端发现没有返回地址，估计是还有VO的对象要再补一下封装对象的内容- -
+        //结果发现原来在submit那里地址就没做好。。
+        //这里是参考了一下答案的做法
+        List<OrderVO>  orderVOList = getOrderVOList(pages);
+
+        return new PageResult(pages.getTotal(), orderVOList);
+    }
+
+    private List<OrderVO> getOrderVOList(Page<Orders> page) {
+        // 需要返回订单菜品信息，自定义OrderVO响应结果
+        List<OrderVO> orderVOList = new ArrayList<>();
+
+        List<Orders> ordersList = page.getResult();
+        if (!CollectionUtils.isEmpty(ordersList)) {
+            for (Orders orders : ordersList) {
+                // 将共同字段复制到OrderVO
+                OrderVO orderVO = new OrderVO();
+                BeanUtils.copyProperties(orders, orderVO);
+                String orderDishes = getOrderDishesStr(orders);
+
+                // 将订单菜品信息封装到orderVO中，并添加到orderVOList
+                orderVO.setOrderDishes(orderDishes);
+                orderVOList.add(orderVO);
+            }
+        }
+        return orderVOList;
+    }
+
+    /**
+     * 根据订单id获取菜品信息字符串
+     *
+     * @param orders
+     * @return
+     */
+    private String getOrderDishesStr(Orders orders) {
+        // 查询订单菜品详情信息（订单中的菜品和数量）
+        List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
+
+        // 将每一条订单菜品信息拼接为字符串（格式：宫保鸡丁*3；）
+        List<String> orderDishList = orderDetailList.stream().map(x -> {
+            String orderDish = x.getName() + "*" + x.getNumber() + ";";
+            return orderDish;
+        }).collect(Collectors.toList());
+
+        // 将该订单对应的所有菜品信息拼接在一起
+        return String.join("", orderDishList);
     }
 }
