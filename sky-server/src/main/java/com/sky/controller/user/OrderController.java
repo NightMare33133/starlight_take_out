@@ -113,4 +113,13 @@ public class OrderController {
     }
 
 
+    @GetMapping("/reminder/{id}")
+    public  Result reminder(@PathVariable("id") Long id){
+        log.info("订单催单，订单id：{}", id);
+        orderService.reminder(id);
+
+        return Result.success();
+    }
+
+
 }
