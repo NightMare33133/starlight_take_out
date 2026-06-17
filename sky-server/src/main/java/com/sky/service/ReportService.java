@@ -1,6 +1,7 @@
 package com.sky.service;
 
 import com.sky.vo.OrderReportVO;
+import com.sky.vo.SalesTop10ReportVO;
 import com.sky.vo.TurnoverReportVO;
 import com.sky.vo.UserReportVO;
 import org.springframework.stereotype.Service;
@@ -33,4 +34,12 @@ public interface ReportService {
      * @return
      */
     OrderReportVO getOrderStatistics(LocalDate begin, LocalDate end);
+
+    /**
+     * 获取指定时间区间的销售额前十的菜品数据
+     * @param begin
+     * @param end
+     * @return
+     */
+    SalesTop10ReportVO getSalesTop10(LocalDate begin, LocalDate end);
 }
